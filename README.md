@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Distrix
 
-## Getting Started
+Distribution ERP frontend for Philippine importer–distributor SMEs — 20–200
+employees, 1–5 warehouses, a field sales team on commission, local and imported
+inventory.
 
-First, run the development server:
+Frontend only. No backend, no database, no auth provider: everything runs on
+typed mock data behind a swappable data layer, so replacing it with a real API
+touches one folder.
+
+The people who use this stare at it for eight hours a day — warehouse clerks
+encoding delivery receipts, sales admins cutting orders, an accounting clerk
+chasing receivables, the owner checking margins on his phone at 10pm. It is
+designed for repetition and speed, not for first impressions.
+
+## Running it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`/` redirects to `/kitchen-sink`, which is the only route with anything behind it
+today. It renders the complete visual system and every shared pattern.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build     # production build, typechecks as part of it
+npx tsc --noEmit  # typecheck alone
+npx eslint .      # zero errors
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Stack
 
-## Learn More
+Next.js 16 (App Router) · TypeScript strict · Tailwind CSS v4 with tokens as CSS
+custom properties · shadcn/ui on Base UI, restyled · TanStack Table v8 ·
+React Hook Form + Zod · nuqs for URL-synced filters · Zustand for global UI state ·
+lucide-react · Recharts · date-fns with `Asia/Manila` · sonner · cmdk ·
+Geist Sans and Geist Mono.
 
-To learn more about Next.js, take a look at the following resources:
+Money is an integer-centavo utility in `src/lib/money.ts` rather than dinero.js —
+that package is still published as an alpha, and this app needs six operations,
+all of which fit in one dependency-free file.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Design system
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Deep cargo teal, not default blue. Density with total clarity: 13px body, 40px
+table rows with a persisted 32px compact mode, 6px control radius, 8px card
+radius, one elevation. Semantic colour appears only in status pills, figure
+deltas and validation — never as decoration.
 
-## Deploy on Vercel
+The signature element is the **AR Aging Rail**: a segmented Current / 1–30 /
+31–60 / 61–90 / 90+ bar with mono figures beneath each segment, each clickable to
+filter the list below. In a distribution business collection *is* the business,
+so it sits on the dashboard and pinned to Statement of Account and every customer
+page. It is the one place the design spends visual boldness.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Dark mode ships from day one via CSS variables; light is the default.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Build order
+
+Built in gates, each reviewed before the next starts.
+
+1. **Foundation** ✅ — token system, restyled primitives, app shell, command
+   palette, every shared pattern, `/kitchen-sink`
+2. Types + Zod schemas + `src/lib/api` + seed generators
+3. Customers, Products/Inventory
+4. Sales Order → Delivery Receipt → Invoice
+5. Payments + Statement of Account + aging
+6. Sales Returns and credit notes
+7. Purchase Orders, local and international
+8. Expenses, Commissions
+9. Dashboard, Sales History, Settings
+10. Responsive pass, accessibility audit, state sweep, print views
+
+Sidebar links to routes from later gates 404 rather than showing a placeholder.
+
+See `CLAUDE.md` for the working rules — token discipline, the money contract, and
+how to restyle a newly added shadcn primitive.

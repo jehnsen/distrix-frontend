@@ -1,26 +1,409 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ==========================================================================
+   DISTRIX TOKENS
+   Every colour, size, radius and shadow in the app resolves to something
+   defined in this block. Feature code must never introduce a raw hex value
+   or a stock Tailwind palette colour (`gray-500`, `blue-600`, ...).
+   ========================================================================== */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* --- Surfaces ---------------------------------------------------------- */
+  --canvas: #f6f7f8;
+  --surface: #ffffff;
+  --surface-sunken: #eff1f3;
+  --surface-raised: #ffffff;
+  --border: #dfe3e8;
+  --border-strong: #c9cfd7;
+
+  /* --- Ink --------------------------------------------------------------- */
+  --ink: #15181c;
+  --ink-muted: #5c6673;
+  --ink-inverse: #ffffff;
+
+  /* --- Accent (deep cargo teal) ------------------------------------------ */
+  --accent: #0b6e5f;
+  --accent-strong: #095a4e;
+  --accent-wash: #e6f2ef;
+  --accent-ink: #ffffff;
+
+  /* --- Semantics. Status pills, figure deltas and validation only. -------- */
+  --paid: #17795e;
+  --paid-wash: #e4f3ee;
+  --overdue: #b42318;
+  --overdue-wash: #fdecea;
+  --partial: #b54708;
+  --partial-wash: #fcf0e4;
+  --info: #175cd3;
+  --info-wash: #e9f0fd;
+  --neutral: #5c6673;
+  --neutral-wash: #eff1f3;
+
+  /* --- AR Aging Rail. The one deliberate severity ramp in the app: teal at
+         Current through to overdue red at 90+. Used nowhere else. ---------- */
+  --aging-current: #0b6e5f;
+  --aging-1-30: #4a9d8e;
+  --aging-31-60: #c07a2a;
+  --aging-61-90: #b54708;
+  --aging-90-plus: #b42318;
+
+  /* --- Charts. Quiet by design: accent family + one informational hue. ---- */
+  --chart-1: #0b6e5f;
+  --chart-2: #4a9d8e;
+  --chart-3: #175cd3;
+  --chart-4: #b54708;
+  --chart-5: #8b95a3;
+  --chart-grid: #e7eaee;
+
+  /* --- Elevation. One resting shadow, one overlay shadow. Never coloured. - */
+  --shadow-raised: 0 1px 2px rgba(21, 24, 28, 0.06), 0 1px 1px rgba(21, 24, 28, 0.04);
+  --shadow-overlay: 0 12px 32px -8px rgba(21, 24, 28, 0.18),
+    0 4px 12px -4px rgba(21, 24, 28, 0.1), 0 0 0 1px rgba(21, 24, 28, 0.06);
+
+  /* --- Shell metrics ----------------------------------------------------- */
+  --sidebar-w: 240px;
+  --sidebar-w-collapsed: 56px;
+  --topbar-h: 52px;
+  --content-max: 1600px;
+
+  /* --- Density. Flipped by [data-density="compact"] on <html>. ----------- */
+  --row-h: 40px;
+  --cell-py: 10px;
 }
+
+[data-density="compact"] {
+  --row-h: 32px;
+  --cell-py: 6px;
+}
+
+.dark {
+  --canvas: #0e1013;
+  --surface: #16191d;
+  --surface-sunken: #1d2126;
+  --surface-raised: #1a1e23;
+  --border: #2b3138;
+  --border-strong: #3b434c;
+
+  --ink: #e8ebef;
+  --ink-muted: #98a3b0;
+  --ink-inverse: #0e1013;
+
+  --accent: #35a48d;
+  --accent-strong: #4cb89f;
+  --accent-wash: #12332c;
+  --accent-ink: #08201b;
+
+  --paid: #3fbf9b;
+  --paid-wash: #10302a;
+  --overdue: #f0837b;
+  --overdue-wash: #35191a;
+  --partial: #e39a55;
+  --partial-wash: #33220f;
+  --info: #7aabf7;
+  --info-wash: #142440;
+  --neutral: #98a3b0;
+  --neutral-wash: #1d2126;
+
+  --aging-current: #35a48d;
+  --aging-1-30: #6fc4b1;
+  --aging-31-60: #d9a35a;
+  --aging-61-90: #e3833f;
+  --aging-90-plus: #f0837b;
+
+  --chart-1: #35a48d;
+  --chart-2: #6fc4b1;
+  --chart-3: #7aabf7;
+  --chart-4: #e39a55;
+  --chart-5: #7c8794;
+  --chart-grid: #262c33;
+
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.5), 0 1px 1px rgba(0, 0, 0, 0.4);
+  --shadow-overlay: 0 12px 32px -8px rgba(0, 0, 0, 0.7),
+    0 4px 12px -4px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* ==========================================================================
+   TAILWIND THEME
+   Distrix names are the public API (`bg-surface`, `text-ink-muted`).
+   The shadcn slot names below are remapped onto the same tokens so that the
+   primitives inherit the system instead of shipping their stock greys.
+   ========================================================================== */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* --- Distrix semantic colours ------------------------------------------ */
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-inverse: var(--ink-inverse);
+
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-wash: var(--accent-wash);
+  --color-accent-ink: var(--accent-ink);
+
+  --color-paid: var(--paid);
+  --color-paid-wash: var(--paid-wash);
+  --color-overdue: var(--overdue);
+  --color-overdue-wash: var(--overdue-wash);
+  --color-partial: var(--partial);
+  --color-partial-wash: var(--partial-wash);
+  --color-info: var(--info);
+  --color-info-wash: var(--info-wash);
+  --color-neutral: var(--neutral);
+  --color-neutral-wash: var(--neutral-wash);
+
+  --color-aging-current: var(--aging-current);
+  --color-aging-1-30: var(--aging-1-30);
+  --color-aging-31-60: var(--aging-31-60);
+  --color-aging-61-90: var(--aging-61-90);
+  --color-aging-90-plus: var(--aging-90-plus);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-grid: var(--chart-grid);
+
+  /* --- shadcn slot remap ------------------------------------------------- */
+  --color-background: var(--canvas);
+  --color-foreground: var(--ink);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--surface-raised);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-ink);
+  --color-secondary: var(--surface-sunken);
+  --color-secondary-foreground: var(--ink);
+  --color-muted: var(--surface-sunken);
+  --color-muted-foreground: var(--ink-muted);
+  --color-destructive: var(--overdue);
+  --color-destructive-foreground: var(--ink-inverse);
+  --color-input: var(--border);
+  --color-ring: var(--accent);
+  --color-sidebar: var(--surface);
+  --color-sidebar-foreground: var(--ink);
+  --color-sidebar-border: var(--border);
+  --color-sidebar-accent: var(--accent-wash);
+  --color-sidebar-accent-foreground: var(--accent);
+  --color-sidebar-primary: var(--accent);
+  --color-sidebar-primary-foreground: var(--accent-ink);
+  --color-sidebar-ring: var(--accent);
+
+  /* --- Type -------------------------------------------------------------- */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", "Cascadia Mono",
+    "Roboto Mono", monospace;
+  --font-serif: initial;
+
+  /* The scale is 11/12/13/14/16/20/24 and nothing else. Tailwind's default
+     size names are redefined onto it so that even un-restyled utility usage
+     lands on the scale; everything above 3xl is removed outright. */
+  --text-xs: 11px;
+  --text-xs--line-height: 16px;
+  --text-sm: 12px;
+  --text-sm--line-height: 16px;
+  --text-base: 13px;
+  --text-base--line-height: 18px;
+  --text-lg: 14px;
+  --text-lg--line-height: 20px;
+  --text-xl: 16px;
+  --text-xl--line-height: 22px;
+  --text-2xl: 20px;
+  --text-2xl--line-height: 26px;
+  --text-2xl--letter-spacing: -0.011em;
+  --text-3xl: 24px;
+  --text-3xl--line-height: 30px;
+  --text-3xl--letter-spacing: -0.011em;
+  --text-4xl: initial;
+  --text-5xl: initial;
+  --text-6xl: initial;
+  --text-7xl: initial;
+  --text-8xl: initial;
+  --text-9xl: initial;
+
+  --tracking-heading: -0.011em;
+  --tracking-eyebrow: 0.04em;
+
+  /* --- Radius. 6px controls, 8px cards, 0 on table cells. ---------------- */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --radius-2xl: initial;
+  --radius-3xl: initial;
+  --radius-4xl: initial;
+
+  /* --- Shadow. Two, total. ----------------------------------------------- */
+  --shadow-2xs: var(--shadow-raised);
+  --shadow-xs: var(--shadow-raised);
+  --shadow-sm: var(--shadow-raised);
+  --shadow-md: var(--shadow-raised);
+  --shadow-raised: var(--shadow-raised);
+  --shadow-lg: var(--shadow-overlay);
+  --shadow-xl: var(--shadow-overlay);
+  --shadow-2xl: var(--shadow-overlay);
+  --shadow-overlay: var(--shadow-overlay);
+
+  /* --- Shell metrics as utilities ---------------------------------------- */
+  --spacing-sidebar: var(--sidebar-w);
+  --spacing-sidebar-collapsed: var(--sidebar-w-collapsed);
+  --spacing-topbar: var(--topbar-h);
+  --spacing-row: var(--row-h);
+  --spacing-content: var(--content-max);
+
+  /* --- Motion budget: 120-180ms, state changes only. --------------------- */
+  --ease-out-quart: cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-duration-fast: 120ms;
+  --animate-duration-base: 160ms;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ==========================================================================
+   BASE
+   ========================================================================== */
+
+@layer base {
+  *,
+  ::after,
+  ::before {
+    border-color: var(--border);
+  }
+
+  html {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    -webkit-text-size-adjust: 100%;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  body {
+    background-color: var(--canvas);
+    color: var(--ink);
+    font-size: 13px;
+    line-height: 18px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: var(--tracking-heading);
+    font-weight: 600;
+  }
+
+  /* Figures, IDs, SKUs and document numbers align on the decimal. */
+  .font-mono,
+  code,
+  kbd,
+  samp,
+  pre {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "zero" 1;
+  }
+
+  ::selection {
+    background-color: var(--accent-wash);
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  /* Chrome/Safari autofill would otherwise paint its own yellow. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--ink);
+    -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--ink-muted);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  /* Table column headers: 11px, uppercase, +0.04em, ink-muted. */
+  .th-label {
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-eyebrow);
+    color: var(--ink-muted);
+  }
+
+  /* The only correct way to render a numeric cell. */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    font-size: 13px;
+  }
+
+  .hairline-b {
+    box-shadow: inset 0 -1px 0 0 var(--border);
+  }
+  .hairline-t {
+    box-shadow: inset 0 1px 0 0 var(--border);
+  }
+}
+
+/* Nothing animates on page load; motion is for state changes only. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print: documents only, no shell. Refined per document type in §7 screens. */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 10pt;
+  }
+  [data-print="hide"] {
+    display: none !important;
+  }
 }
