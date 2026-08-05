@@ -107,6 +107,20 @@ function build(): Database {
 
   const returns = generateReturns(rng, series, today, chain.invoices);
 
+  // What actually went out of the door. Purchasing and opening stock are both
+  // sized from it, so the warehouse holds a plausible few weeks of cover rather
+  // than eighteen months of everything ever bought.
+  const demandByProductWarehouse = new Map<string, number>();
+  for (const delivery of chain.deliveries) {
+    for (const line of delivery.lines) {
+      const lane = `${line.productId}::${delivery.warehouseId}`;
+      demandByProductWarehouse.set(
+        lane,
+        (demandByProductWarehouse.get(lane) ?? 0) + line.qtyShipped,
+      );
+    }
+  }
+
   const purchaseOrders = generatePurchaseOrders({
     rng,
     series,
@@ -114,6 +128,7 @@ function build(): Database {
     suppliers,
     products,
     warehouses,
+    demandByProductWarehouse,
   });
 
   const edgeCases = applyEdgeCases({
@@ -140,6 +155,7 @@ function build(): Database {
     deliveries: chain.deliveries,
     purchaseOrders,
     returns,
+    demandByProductWarehouse,
   });
 
   const expenses = generateExpenses(rng, series, today);

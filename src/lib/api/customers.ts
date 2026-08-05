@@ -94,6 +94,8 @@ export interface CustomerDetail {
   priceList: PriceList | undefined;
   aging: AgingSummary;
   openInvoices: Invoice[];
+  /** The date the buckets were computed against — never the browser's clock. */
+  asOf: string;
 }
 
 export function getCustomer(id: string): Promise<CustomerDetail> {
@@ -114,6 +116,7 @@ export function getCustomer(id: string): Promise<CustomerDetail> {
       priceList: database.priceLists.find((list) => list.id === customer.priceListId),
       aging: agingFor(database.invoices, customer.id, database.today),
       openInvoices,
+      asOf: database.today.toISOString().slice(0, 10),
     };
   });
 }

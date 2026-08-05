@@ -32,6 +32,9 @@ interface Context {
   deliveries: DeliveryReceipt[];
   purchaseOrders: PurchaseOrder[];
   returns: SalesReturn[];
+  /** Units shipped, keyed `productId::warehouseId`. Sizes opening stock and
+   *  the rebalancing transfers between sites. */
+  demandByProductWarehouse?: Map<string, number>;
 }
 
 export interface StockResult {
@@ -78,12 +81,19 @@ export function generateStock(ctx: Context): StockResult {
     });
   };
 
-  // Opening stock, eighteen months ago, so balances never go implausibly negative.
+  // Opening stock is sized from each site's own offtake rather than an
+  // arbitrary multiple of the reorder point: enough that balances never go
+  // negative, little enough that the warehouse does not read as a silo.
   const openingDate = iso(subMonths(today, 18));
+  const demand = ctx.demandByProductWarehouse ?? new Map<string, number>();
   for (const product of products) {
     for (const warehouse of warehouses) {
-      const share = warehouse.code === "PRQ" ? 1 : rng.float(0.25, 0.55);
-      const opening = Math.round(product.reorderPoint * rng.float(2.5, 6) * share);
+      // About a month of that site's own offtake, floored near the reorder point.
+      const monthly = (demand.get(`${product.id}::${warehouse.id}`) ?? 0) / 18;
+      const opening = Math.max(
+        Math.round(product.reorderPoint * rng.float(0.3, 0.6)),
+        Math.round(monthly * 0.9),
+      );
       bump(product.id, warehouse.id, opening, openingDate, "receipt", {
         type: "Opening balance",
         no: "OPENING",
@@ -288,7 +298,13 @@ function generateTransfers(ctx: Context, bump: Bump): StockTransfer[] {
   const branches = warehouses.filter((w) => w.code !== "PRQ");
   if (!prq || branches.length === 0) return transfers;
 
-  // Manila replenishes the branches roughly twice a month.
+  const demand = ctx.demandByProductWarehouse ?? new Map<string, number>();
+
+  /**
+   * Each branch buys for its own demand, so transfers are rebalancing top-ups —
+   * covering a stock-out between deliveries — not the main supply line. Sizing
+   * them as bulk replenishment would drain Manila and double-stock the branch.
+   */
   for (let monthsBack = 17; monthsBack >= 0; monthsBack--) {
     for (let i = 0; i < 2; i++) {
       const dispatchDate = addDays(subMonths(today, monthsBack), rng.int(1, 27));
@@ -301,7 +317,9 @@ function generateTransfers(ctx: Context, bump: Bump): StockTransfer[] {
       const picks = rng.pickMany(products, rng.int(4, 10));
 
       const lines = picks.map((product, index) => {
-        const qtySent = (product.altUomConversion ?? 1) * rng.int(4, 30);
+        // Roughly a week of the destination's offtake.
+        const monthlyAtBranch = (demand.get(`${product.id}::${to.id}`) ?? 0) / 18;
+        const qtySent = Math.max(1, Math.round(monthlyAtBranch * rng.float(0.15, 0.3)));
         // Occasional short receipt at the branch.
         const qtyReceived = arrived
           ? rng.bool(0.9)

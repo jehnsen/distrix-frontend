@@ -18,8 +18,12 @@ export {
 } from "@/lib/api/client";
 
 export * from "@/lib/api/customers";
+export * from "@/lib/api/customer-history";
 export * from "@/lib/api/products";
+export * from "@/lib/api/inventory";
 export * from "@/lib/api/orders";
+export * from "@/lib/api/pick-lists";
+export * from "@/lib/api/sales-writes";
 export * from "@/lib/api/receivables";
 export * from "@/lib/api/purchasing";
 export * from "@/lib/api/dashboard";

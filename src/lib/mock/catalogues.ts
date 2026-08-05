@@ -173,8 +173,36 @@ export const PRODUCT_SEEDS: ProductSeed[] = [
   { name: "Fish Sauce", brand: "Squid Brand", category: "oils_condiments", skuMid: "FSH", uom: "BTL", altUom: "CS", conversion: 12, isImported: true, vatType: "vatable", anchorPrice: 118, weightGrams: 725 },
 ];
 
-/** Size variants used to expand the seed list into a realistic SKU count. */
-export const SIZE_VARIANTS = ["250", "500", "1KG", "2KG", "5KG", "180", "400", "750"];
+/**
+ * Pack sizes that make sense for each base unit, with the price and weight
+ * multiplier relative to the seed's anchor size. A sack of rice comes in 25kg
+ * and 50kg; it does not come in 250g.
+ */
+export const SIZE_VARIANTS_BY_UOM: Record<
+  ProductSeed["uom"],
+  { label: string; factor: number }[]
+> = {
+  SACK: [
+    { label: "25KG", factor: 1 },
+    { label: "50KG", factor: 1.95 },
+  ],
+  BTL: [
+    { label: "250ML", factor: 0.55 },
+    { label: "500ML", factor: 1 },
+    { label: "750ML", factor: 1.42 },
+    { label: "1L", factor: 1.85 },
+  ],
+  PACK: [
+    { label: "200G", factor: 0.52 },
+    { label: "400G", factor: 1 },
+    { label: "1KG", factor: 2.3 },
+  ],
+  PCS: [
+    { label: "155G", factor: 0.82 },
+    { label: "185G", factor: 1 },
+    { label: "400G", factor: 2.05 },
+  ],
+};
 
 export interface SupplierSeed {
   name: string;

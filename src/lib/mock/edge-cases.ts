@@ -139,18 +139,23 @@ export function applyEdgeCases(bag: Bag): EdgeCaseTargets {
   }
 
   /* --- Push the restaurant group past its limit ------------------------ */
-  // Raise its unpaid balance above the limit by leaving a big invoice open.
-  const restaurantInvoices = invoices.filter(
-    (invoice) => invoice.customerId === restaurant.id && invoiceBalance(invoice) > 0,
-  );
-  const shortfall = restaurant.creditLimit - sum(restaurantInvoices.map(invoiceBalance));
-  if (shortfall > 0) {
-    const target = restaurantInvoices[0];
-    if (target) {
-      // Reverse a settlement so the account tips over the line.
-      target.amountPaid = 0 as Centavos;
-      target.creditApplied = 0 as Centavos;
-    }
+  // Un-settle its most recent invoices, newest first, until the account is
+  // genuinely over the line. Doing it by amount rather than by count keeps the
+  // case working whatever the seed happens to produce.
+  const owned = invoices
+    .filter((invoice) => invoice.customerId === restaurant.id && invoice.status !== "cancelled")
+    .sort((a, b) => b.invoiceDate.localeCompare(a.invoiceDate));
+
+  const target = restaurant.creditLimit * 1.35;
+  let balance = sum(owned.map(invoiceBalance));
+
+  for (const invoice of owned) {
+    if (balance >= target) break;
+    const settled = (invoice.amountPaid + invoice.creditApplied) as Centavos;
+    if (settled === 0) continue;
+    invoice.amountPaid = 0 as Centavos;
+    invoice.creditApplied = 0 as Centavos;
+    balance = (balance + settled) as Centavos;
   }
 
   /* --- A partially delivered order ------------------------------------- */

@@ -7,7 +7,7 @@ import {
   FIRST_NAMES,
   LAST_NAMES,
   PRODUCT_SEEDS,
-  SIZE_VARIANTS,
+  SIZE_VARIANTS_BY_UOM,
   STREETS,
   SUPPLIER_SEEDS,
 } from "@/lib/mock/catalogues";
@@ -195,14 +195,19 @@ export function generateProducts(rng: Rng, suppliers: Supplier[]): Product[] {
   let sequence = 0;
 
   for (const seed of PRODUCT_SEEDS) {
-    const variantCount = rng.int(2, 4);
-    const sizes = rng.pickMany(SIZE_VARIANTS, variantCount);
+    const available = SIZE_VARIANTS_BY_UOM[seed.uom];
+    // Keep the anchor size, then add one or two neighbours around it.
+    const anchor = available.find((variant) => variant.factor === 1) ?? available[0]!;
+    const others = rng.pickMany(
+      available.filter((variant) => variant !== anchor),
+      rng.int(1, Math.min(2, available.length - 1)),
+    );
 
-    for (const size of sizes) {
+    for (const variant of [anchor, ...others]) {
       sequence += 1;
       const prefix = seed.vatType === "zero-rated" ? "EXP" : seed.isImported ? "IMP" : "LOC";
-      // Price scales loosely with pack size so the range is not flat.
-      const scale = rng.float(0.72, 1.45);
+      // Price tracks pack size, with a little brand-level noise on top.
+      const scale = variant.factor * rng.float(0.94, 1.07);
       const listPrice = fromMajor(Math.round(seed.anchorPrice * scale));
       const marginPct = rng.float(0.18, 0.34);
       const standardCost = Math.round(listPrice * (1 - marginPct)) as Centavos;
@@ -210,21 +215,20 @@ export function generateProducts(rng: Rng, suppliers: Supplier[]): Product[] {
 
       products.push({
         id: `PRD-${String(sequence).padStart(4, "0")}`,
-        sku: `${prefix}-${seed.skuMid}-${size}`,
+        sku: `${prefix}-${seed.skuMid}-${variant.label}`,
         barcode: String(rng.int(48000000, 48999999)) + String(rng.int(100000, 999999)),
-        name: `${seed.brand} ${seed.name} ${size}${seed.uom === "SACK" ? "" : "g"}`.replace(
-          /(\d)(KG)g/,
-          "$1$2",
-        ),
+        name: `${seed.brand} ${seed.name} ${variant.label}`,
         category: seed.category,
         brand: seed.brand,
         uom: seed.uom,
-        reorderPoint: rng.int(24, 480),
+        // Bulk lines turn over in small counts; retail packs in large ones.
+        reorderPoint:
+          seed.uom === "SACK" ? rng.int(20, 90) : rng.int(120, 900),
         vatType: seed.vatType,
         isImported: seed.isImported,
         standardCost,
         listPrice,
-        weightGrams: Math.round(seed.weightGrams * scale),
+        weightGrams: Math.round(seed.weightGrams * variant.factor),
         primarySupplierId: supplier.id,
         status: rng.bool(0.96) ? "active" : "inactive",
         createdAt: formatISO(addDays(EPOCH, -rng.int(30, 700))),
@@ -302,7 +306,9 @@ export function generateCustomers(rng: Rng, reps: SalesRep[]): Customer[] {
         { value: "45", weight: 14 },
         { value: "60", weight: 8 },
       ]),
-      creditLimit: fromMajor(Math.round((150_000 * scale) / 5_000) * 5_000),
+      // Limits are set against a typical open balance — roughly two months of
+      // trade for the format — and rounded to a negotiable-looking figure.
+      creditLimit: fromMajor(Math.round((900_000 * scale) / 25_000) * 25_000),
       currentBalance: 0 as Centavos,
       priceListId: priceListForSegment[segment],
       salesRepId: rng.pick(reps).id,

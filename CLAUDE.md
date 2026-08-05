@@ -11,8 +11,8 @@ data layer.
 1. ✅ **Foundation** — tokens, restyled primitives, app shell, command palette, all
    shared patterns, `/kitchen-sink`.
 2. ✅ **Domain model** — `src/types`, Zod schemas, `src/lib/api`, seeded generators.
-3. ⬜ Customers, Products/Inventory
-4. ⬜ Sales Order → Delivery Receipt → Invoice
+3. ✅ **Masters** — Customers, Products, Stock Levels, Adjustments, Transfers.
+4. ✅ **The spine** — Sales Order → Delivery Receipt → Invoice, with print views.
 5. ⬜ Payments + Statement of Account + aging
 6. ⬜ Sales Returns and credit notes
 7. ⬜ Purchase Orders (local + international)
@@ -20,7 +20,9 @@ data layer.
 9. ⬜ Dashboard, Sales History, Settings
 10. ⬜ Responsive, accessibility, state sweep, print views
 
-Only `/` and `/kitchen-sink` exist so far. Sidebar links to unbuilt routes 404 by
+Built so far: `/kitchen-sink`, `/customers`, `/products`, `/stock-levels`,
+`/adjustments`, `/transfers`, `/orders`, `/deliveries`, `/invoices` and the
+`/print/*` routes. Sidebar links to routes from later gates 404 by
 design — do not stub them with placeholder pages.
 
 ## Non-negotiables
@@ -69,6 +71,13 @@ design — do not stub them with placeholder pages.
   `codeColumn`/`statusColumn` so numeric alignment is guaranteed, not remembered.
 - `<FilterBar filters={...} />` — declarative, URL-synced, chips always visible.
 - `<DocumentPage>` — the layout for all ten document types.
+- `<DocumentTrail>` — SO → DR → SI → PR as clickable nodes. Build the stages
+  with a `*-trail.ts` helper next to the page, not inline in the view.
+- `<RecordPage>` — the master-record layout (customers, products). No lifecycle
+  toolbar, no totals; the open tab lives in the URL.
+- `useApiQuery(key, fetcher)` — every list and detail read. Keeps the previous
+  result on screen while the next loads. `useFilterValues` reads what FilterBar
+  wrote, so page and bar cannot disagree.
 - `<LineItemsEditor>` — the keyboard-first line grid.
 - `<StatusPill>` — add new statuses to `STATUS_REGISTRY`, never a coloured span.
 - `<Money>` / `<Figure>` — the only way currency and quantities render.

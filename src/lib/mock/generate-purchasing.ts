@@ -36,6 +36,12 @@ interface Context {
   suppliers: Supplier[];
   products: Product[];
   warehouses: Warehouse[];
+  /**
+   * Units actually shipped, keyed `productId::warehouseId`. Purchase quantities
+   * are derived from it — a distributor buys what it sells, and each site is
+   * replenished for what that site actually ships.
+   */
+  demandByProductWarehouse: Map<string, number>;
 }
 
 function landedCostsFor(rng: Rng, subtotalPhp: Centavos, isImport: boolean): LandedCost[] {
@@ -168,18 +174,25 @@ export function generatePurchaseOrders(ctx: Context): PurchaseOrder[] {
   const pos: PurchaseOrder[] = [];
 
   const spanDays = differenceInCalendarDays(today, start);
-  const schedule: { supplier: Supplier; date: Date }[] = [];
+
+  // One schedule per supplier per warehouse: a Manila importer lands containers
+  // at Parañaque, and the branches are replenished on their own cycle. Branch
+  // orders run less often because their volumes are smaller.
+  const schedule: { supplier: Supplier; warehouse: Warehouse; date: Date }[] = [];
   for (const supplier of ctx.suppliers) {
-    // Imports land roughly every 6-10 weeks; local restocks far more often.
-    const intervalDays = supplier.type === "international" ? rng.int(42, 70) : rng.int(12, 26);
-    for (let day = 0; day <= spanDays; day += intervalDays) {
-      const date = addDays(start, day + rng.int(0, 6));
-      if (date <= today) schedule.push({ supplier, date });
+    for (const warehouse of ctx.warehouses) {
+      const isHub = warehouse.code === "PRQ";
+      const base = supplier.type === "international" ? 56 : 19;
+      const intervalDays = Math.round(base * (isHub ? 1 : 2.1));
+      for (let day = 0; day <= spanDays; day += intervalDays) {
+        const date = addDays(start, day + rng.int(0, 6));
+        if (date <= today) schedule.push({ supplier, warehouse, date });
+      }
     }
   }
   schedule.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  for (const { supplier, date: orderDate } of schedule) {
+  for (const { supplier, warehouse, date: orderDate } of schedule) {
     const catalogue = ctx.products.filter((p) => p.primarySupplierId === supplier.id);
     if (catalogue.length === 0) continue;
 
@@ -190,9 +203,29 @@ export function generatePurchaseOrders(ctx: Context): PurchaseOrder[] {
     const picks = rng.pickMany(catalogue, rng.int(3, Math.min(9, catalogue.length)));
     const poNo = series.next("PO", iso(orderDate));
 
+    // How many POs on this lane will actually carry a given product. Only a
+    // handful of the supplier's catalogue goes on each order, so sizing by the
+    // order count alone would under-buy every SKU by that same fraction.
+    const isHub = warehouse.code === "PRQ";
+    const base = supplier.type === "international" ? 56 : 19;
+    const ordersForLane = Math.max(1, Math.round(spanDays / (base * (isHub ? 1 : 2.1))));
+    const ordersPerProduct = Math.max(
+      1,
+      ordersForLane * (picks.length / catalogue.length),
+    );
+
     const lines: PurchaseOrderLine[] = picks.map((product, index) => {
       const caseSize = product.altUomConversion ?? 1;
-      const qty = caseSize > 1 ? caseSize * rng.int(20, 180) : rng.int(200, 3000);
+      const demand = ctx.demandByProductWarehouse.get(`${product.id}::${warehouse.id}`) ?? 0;
+      // Buy this site's demand plus ~10% cover, spread across the orders that
+      // will actually carry it, and never less than one case. FMCG distribution
+      // runs thin: the surplus is what ends up sitting on the shelf.
+      const perOrder = (demand * 1.1) / ordersPerProduct;
+      const jittered = perOrder * rng.float(0.8, 1.25);
+      const qty =
+        caseSize > 1
+          ? Math.max(caseSize, Math.round(jittered / caseSize) * caseSize)
+          : Math.max(6, Math.round(jittered));
       // Supplier price is the standard cost, expressed in their currency.
       const unitPricePhp = Math.round(product.standardCost * rng.float(0.9, 1.05)) as Centavos;
       const unitPrice = isImport
@@ -274,7 +307,7 @@ export function generatePurchaseOrders(ctx: Context): PurchaseOrder[] {
           id: `GR-${grNo}`,
           grNo,
           purchaseOrderId: `PO-${poNo}`,
-          warehouseId: ctx.warehouses[0]?.id ?? "WH-PRQ",
+          warehouseId: warehouse.id,
           receivedDate: iso(receivedDate),
           receivedById: "USR-003",
           receivedByName: "Nestor Alcantara",
@@ -309,7 +342,7 @@ export function generatePurchaseOrders(ctx: Context): PurchaseOrder[] {
       poNo,
       supplierId: supplier.id,
       type: supplier.type,
-      warehouseId: ctx.warehouses[0]?.id ?? "WH-PRQ",
+      warehouseId: warehouse.id,
       currency: supplier.currency,
       fxRate,
       orderDate: iso(orderDate),

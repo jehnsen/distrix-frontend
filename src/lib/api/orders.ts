@@ -8,6 +8,7 @@ import {
   withinAmount,
   withinDates,
 } from "@/lib/api/client";
+import type { Centavos } from "@/lib/money";
 import { creditHeadroom, isOverCreditLimit } from "@/types/customer";
 import { fulfilmentProgress } from "@/types/sales-order";
 import type {
@@ -102,7 +103,7 @@ export function listOrders(filters: OrderFilters = {}): Promise<Page<OrderListRo
 export interface OrderDetail {
   order: SalesOrder;
   customer: Customer;
-  customerHeadroom: number;
+  customerHeadroom: Centavos;
   customerOverLimit: boolean;
   salesRepName: string;
   warehouseName: string;
